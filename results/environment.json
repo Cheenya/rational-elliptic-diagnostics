@@ -1,0 +1,10 @@
+{
+  "os": "Darwin",
+  "architecture": "arm64",
+  "cpu_model": "Apple M1",
+  "logical_cores": 8,
+  "memory_gib": 8.0,
+  "sage_version": "10.8",
+  "python_version": "3.13.7",
+  "compiler_version": "Apple clang version 21.0.0 (clang-2100.1.1.101)"
+}

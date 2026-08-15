@@ -1,0 +1,57 @@
+cff-version: "1.2.0"
+message: "Please cite this software and the associated conference talk."
+type: software
+title: "Воспроизводимый вычислительный конвейер предварительной диагностики рациональных эллиптических кривых"
+version: "0.1.0"
+date-released: "2026-08-15"
+license: MIT
+authors:
+  - family-names: "Чистяков"
+    given-names: "Никита Андреевич"
+  - family-names: "Адамова"
+    given-names: "Раиса Сергеевна"
+preferred-citation:
+  type: generic
+  title: "Воспроизводимый вычислительный конвейер предварительной диагностики рациональных эллиптических кривых"
+  year: 2026
+  authors:
+    - family-names: "Чистяков"
+      given-names: "Никита Андреевич"
+    - family-names: "Адамова"
+      given-names: "Раиса Сергеевна"
+references:
+  - type: generic
+    title: "Вычисление группы точек конечного порядка рациональной эллиптической кривой"
+    authors:
+      - family-names: "Адамова"
+        given-names: "Раиса Сергеевна"
+    year: 2025
+    isbn: "978-5-6054088-7-1"
+  - type: article
+    title: "Sur l'équation y^2 = x^3 - Ax - B dans les corps p-adiques"
+    authors:
+      - family-names: Lutz
+        given-names: Élisabeth
+    year: 1937
+    doi: 10.1515/crll.1937.177.238
+  - type: article
+    title: "Modular curves and the Eisenstein ideal"
+    authors:
+      - family-names: Mazur
+        given-names: Barry
+    year: 1977
+    doi: 10.1007/BF02684339
+  - type: book
+    title: "The Arithmetic of Elliptic Curves"
+    authors:
+      - family-names: Silverman
+        given-names: Joseph H.
+    year: 2009
+    doi: 10.1007/978-0-387-09494-6
+  - type: software
+    title: SageMath
+    authors:
+      - name: "The Sage Developers"
+    version: "10.8"
+    url: https://www.sagemath.org
+    doi: 10.5281/zenodo.8042260

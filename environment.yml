@@ -1,0 +1,10 @@
+name: rational-elliptic-diagnostics
+channels:
+  - conda-forge
+dependencies:
+  - python=3.13
+  - sage=10.8
+  - cmake=4.2
+  - pytest=9
+  - cxx-compiler=1.11
+  - pip
