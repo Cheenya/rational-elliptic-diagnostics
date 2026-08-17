@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -51,6 +52,16 @@ def _author_names(authors: object) -> list[tuple[str, str]]:
     ]
 
 
+def _manifest_entries() -> list[tuple[str, str]]:
+    manifest = (REPOSITORY_ROOT / "MANIFEST.sha256").read_text(encoding="utf-8")
+    entries: list[tuple[str, str]] = []
+    for line in manifest.splitlines():
+        match = re.fullmatch(r"([0-9a-f]{64})  \./(.+)", line)
+        assert match is not None, f"invalid manifest entry: {line!r}"
+        entries.append((match.group(1), match.group(2)))
+    return entries
+
+
 def test_required_repository_metadata_files_exist() -> None:
     missing = [name for name in METADATA_FILES if not (REPOSITORY_ROOT / name).is_file()]
     assert missing == []
@@ -93,6 +104,44 @@ def test_citation_metadata_has_exact_identity_and_factual_references() -> None:
     assert "10.8" in serialized
 
 
+def test_citation_metadata_has_joint_article_as_separate_reference() -> None:
+    citation = _load_yaml("CITATION.cff")
+    assert isinstance(citation, dict)
+    title = (
+        "Вычислительная методика быстрой проверки наличия точек 3-го порядка "
+        "на рациональных эллиптических кривых"
+    )
+    matches = [
+        reference
+        for reference in citation["references"]
+        if reference.get("title") == title
+    ]
+    assert matches == [
+        {
+            "type": "article",
+            "title": title,
+            "authors": [
+                {
+                    "family-names": "Чистяков",
+                    "given-names": "Никита Андреевич",
+                },
+                {
+                    "family-names": "Адамова",
+                    "given-names": "Раиса Сергеевна",
+                },
+            ],
+            "journal": (
+                "Вестник Воронежского государственного университета. "
+                "Серия: Физика. Математика"
+            ),
+            "year": 2026,
+            "issue": 1,
+            "start": 59,
+            "end": 67,
+        }
+    ]
+
+
 def test_environment_pins_reproduction_toolchain() -> None:
     environment = _load_yaml("environment.yml")
     assert isinstance(environment, dict)
@@ -108,7 +157,7 @@ def test_environment_pins_reproduction_toolchain() -> None:
     ]
 
 
-def test_readme_states_scope_commands_results_and_interpretation_limits() -> None:
+def test_readme_states_scope_commands_results_and_measurement_contract() -> None:
     readme = (REPOSITORY_ROOT / "README.md").read_text(encoding="utf-8")
     assert readme.startswith(f"# {TITLE}\n")
     for required in (
@@ -130,21 +179,83 @@ def test_readme_states_scope_commands_results_and_interpretation_limits() -> Non
         "sage -python scripts/run_sage_reference.py --config configs/conference.yml --input output/stage_a_rows.csv --output-dir output",
         "python scripts/verify_results.py --config configs/conference.yml --input-dir output --results-dir results",
         "sage -python scripts/run_benchmark.py --config configs/conference.yml --sizes 10000 30000 100000 300000 --sample-per-size 1000 --repeats 3 --output-dir results",
+        "sage -python scripts/run_workflow_benchmark.py --config configs/conference.yml --n 200000 --k 2000 --repeats 5 --output-dir results",
         "results/stage_a_summary.csv",
         "results/stage_b_reference.csv",
         "results/calibration.csv",
         "results/benchmark_scaling.csv",
+        "results/workflow_benchmark_runs.csv",
+        "results/workflow_benchmark_summary.csv",
         "results/environment.json",
-        "2000",
-        "200000",
+        "2 000",
+        "200 000",
         "300+300",
-        "не является оценкой распространённости",
-        "не означает невозможность",
+        "точное покрытие",
+        "100%",
+        "1%",
+        "20,4",
         "зависят от машины и методики",
         "MIT",
         "CC BY 4.0",
     ):
         assert required in readme
+    assert "одинаковый выход двух гибридных сценариев" in readme
+
+
+def test_readme_links_article_and_poster_with_exact_attribution() -> None:
+    readme = (REPOSITORY_ROOT / "README.md").read_text(encoding="utf-8")
+    heading = "## Связь со статьёй и плакатом"
+    assert readme.count(heading) == 1
+    section = readme.split(heading, maxsplit=1)[1].split("\n## ", maxsplit=1)[0]
+    for required in (
+        "статья является методической основой работы",
+        "Вестник Воронежского государственного университета. Серия: Физика. Математика",
+        "текущему снимку репозитория",
+        "Докладчик по плакату — только Н. А. Чистяков",
+        "Р. С. Адамова указана как соавтор публикации и научной основы",
+    ):
+        assert required in section
+
+
+def test_manifest_entries_are_sorted_exist_and_match_sha256() -> None:
+    entries = _manifest_entries()
+    relative_paths = [relative_path for _, relative_path in entries]
+    assert relative_paths == sorted(relative_paths)
+    assert "MANIFEST.sha256" not in relative_paths
+
+    for expected_digest, relative_path in entries:
+        path = REPOSITORY_ROOT / relative_path
+        assert path.is_file(), f"missing manifest path: {relative_path}"
+        actual_digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        assert actual_digest == expected_digest, f"stale manifest digest: {relative_path}"
+
+
+def test_manifest_entries_match_git_tracked_files_when_checkout_available() -> None:
+    try:
+        checkout = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=REPOSITORY_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        pytest.skip("git is unavailable; archive hashes remain covered")
+
+    if checkout.returncode != 0:
+        pytest.skip("source archive without Git metadata")
+    if Path(checkout.stdout.strip()).resolve() != REPOSITORY_ROOT.resolve():
+        pytest.skip("source archive is nested in a different Git checkout")
+
+    tracked = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=REPOSITORY_ROOT,
+        check=True,
+        capture_output=True,
+    ).stdout.decode("utf-8").split("\0")
+    expected_paths = {path for path in tracked if path and path != "MANIFEST.sha256"}
+    manifest_paths = {relative_path for _, relative_path in _manifest_entries()}
+    assert manifest_paths == expected_paths
 
 
 def test_license_split_uses_exact_identifiers_and_canonical_terms() -> None:
